@@ -1,49 +1,149 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <title>Kumasi Air Quality – Interactive Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>Map Demo – Template</title>
-  <meta name="description" content="Interactive map demo built with Leaflet and GeoJSON."/>
-
-  <!-- Open Graph for social previews -->
-  <meta property="og:type" content="website"/>
-  <meta property="og:title" content="Map Demo – Template"/>
-  <meta property="og:description" content="Interactive demo map"/>
-  <meta property="og:url" content="__PAGES_URL__"/>
-  <meta property="og:image" content="__PAGES_URL__/preview.png"/>
-  <meta property="og:image:width" content="1200"/>
-  <meta property="og:image:height" content="630"/>
+  <!-- Open Graph (basic) -->
+  <meta property="og:title" content="Kumasi Air Quality – Interactive Dashboard">
+  <meta property="og:description" content="Heatmap + time slider of PM2.5 across Kumasi (demo data).">
+  <meta property="og:image" content="https://airban-engr.github.io/kumasi-air-quality/preview.jpg">
 
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    html, body, #map { height: 100%; margin: 0; }
+    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Arial, sans-serif; }
+    #map { height: calc(100% - 84px); }
+    #toolbar {
+      height: 84px; display: flex; align-items: center; gap: 18px; padding: 12px 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08); background: #fff;
+    }
+    #dateLabel { font-weight: 700; }
+    input[type="range"] { width: 320px; }
+    .pill { padding: 6px 10px; border: 1px solid #ddd; border-radius: 999px; background: #f8fafc; }
   </style>
 </head>
 <body>
+  <div id="toolbar">
+    <div><b>Kumasi Air Quality</b> <span class="pill">PM2.5 Heatmap (Demo)</span></div>
+    <div id="dateLabel">Loading dates…</div>
+    <input id="dateSlider" type="range" min="0" max="0" step="1" value="0" />
+    <button id="playBtn" class="pill">▶ Play</button>
+    <div style="margin-left:auto" class="pill">
+      Need a live dashboard? <a href="YOUR-CONTACT-LINK" target="_blank" rel="noopener">Let’s talk</a>
+    </div>
+  </div>
   <div id="map"></div>
 
-  <!-- Leaflet JS -->
+  <!-- Leaflet & Heatmap plugin -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    // Init map
-    const map = L.map('map').setView([7.9, -1.0], 7);
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
+  <script>
+    // Base map
+    const map = L.map('map').setView([6.69, -1.62], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
+      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Load demo GeoJSON
-    fetch('data/demo_data.geojson')
-      .then(r => r.json())
-      .then(data => {
-        L.geoJSON(data, {
-          onEachFeature: (f, l) => l.bindPopup("Feature: " + JSON.stringify(f.properties))
-        }).addTo(map);
+    // Globals
+    let series = [];      // full dataset
+    let dates = [];       // available dates
+    let heat;             // heatmap layer
+    let markers = [];     // circle markers for context
+    let timer = null;     // autoplay
+    const slider = document.getElementById('dateSlider');
+    const label  = document.getElementById('dateLabel');
+    const play   = document.getElementById('playBtn');
+
+    // Helpers
+    function pm25ToIntensity(pm25) {
+      // Normalize roughly 0..150 into 0..1
+      const v = Math.max(0, Math.min(1, pm25 / 150));
+      return v;
+    }
+
+    function colorForAQI(aqi) {
+      if (aqi <= 50) return '#4caf50';       // Good
+      if (aqi <= 100) return '#cddc39';      // Moderate
+      if (aqi <= 150) return '#ff9800';      // Unhealthy for sensitive
+      if (aqi <= 200) return '#f44336';      // Unhealthy
+      return '#9c27b0';                      // Very Unhealthy+
+    }
+
+    function updateMapForIndex(i) {
+      const day = dates[i];
+      label.textContent = 'Date: ' + day;
+
+      // Build heat points: [lat, lon, intensity]
+      const heatPoints = [];
+      // Clean old markers
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+
+      series.forEach(st => {
+        const val = st.values.find(v => v.date === day);
+        if (!val) return;
+        const intensity = pm25ToIntensity(val.pm25);
+        heatPoints.push([st.lat, st.lon, intensity]);
+
+        // Context marker with popup
+        const marker = L.circleMarker([st.lat, st.lon], {
+          radius: 7, color: '#222', weight: 1,
+          fillColor: colorForAQI(val.aqi), fillOpacity: 0.95
+        })
+        .bindPopup(`
+          <div style="font:13px system-ui">
+            <b>${st.station}</b><br>
+            PM2.5: <b>${val.pm25}</b> µg/m³<br>
+            PM10: <b>${val.pm10}</b> µg/m³<br>
+            AQI: <b>${val.aqi}</b>
+          </div>
+        `);
+        markers.push(marker.addTo(map));
       });
+
+      // Replace heat layer
+      if (heat) map.removeLayer(heat);
+      heat = L.heatLayer(heatPoints, { radius: 35, blur: 20, maxZoom: 15 }).addTo(map);
+    }
+
+    function playToggle() {
+      if (timer) {
+        clearInterval(timer); timer = null;
+        play.textContent = '▶ Play';
+        return;
+      }
+      play.textContent = '⏸ Pause';
+      timer = setInterval(() => {
+        let idx = Number(slider.value);
+        idx = (idx + 1) % dates.length;
+        slider.value = idx;
+        updateMapForIndex(idx);
+      }, 1200);
+    }
+
+    // Load data
+    fetch('data/air_quality_timeseries.json')
+      .then(r => r.json())
+      .then(json => {
+        series = json;
+        dates = json[0].values.map(v => v.date);  // assume consistent dates
+        slider.min = 0; slider.max = dates.length - 1; slider.value = 0;
+        updateMapForIndex(0);
+
+        // Fit bounds to stations
+        const fg = L.featureGroup(series.map(s => L.marker([s.lat, s.lon])));
+        map.fitBounds(fg.getBounds().pad(0.2));
+      })
+      .catch(err => {
+        console.error('Failed to load data/air_quality_timeseries.json', err);
+        alert('Missing or invalid data file: data/air_quality_timeseries.json');
+      });
+
+    slider.addEventListener('input', (e) => updateMapForIndex(Number(e.target.value)));
+    play.addEventListener('click', playToggle);
   </script>
 </body>
 </html>

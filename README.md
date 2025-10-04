@@ -1,38 +1,75 @@
-# 🌍 [PROJECT TITLE]
+Kumasi Air Quality – Interactive Dashboard 🌍
 
-**Interactive Map Demo built with Leaflet & GeoJSON**  
-Clear, interactive visualization of spatial data — tailored for planning, research, and decision-making.  
+An interactive heatmap of PM2.5 levels across Kumasi with a time slider.
+Built using Leaflet + Leaflet.heat + GitHub Pages with demo time-series air quality data.
 
----
+This project demonstrates how open geospatial dashboards can support health, environment, and policy planning.
 
-## 🔹 Live Demo
-👉 [View the map here](https://USERNAME.github.io/REPO_NAME/)  
+🔹 Live Demo
 
----
+👉 Explore the dashboard
 
-## 🔹 Features
-- 🗺️ Interactive web map built with **Leaflet.js**  
-- 🎨 Custom styling by region, risk, or category  
-- 🔍 Search & filter functionality for quick insights  
-- 📱 Mobile-responsive for easy viewing  
-- 🚀 Lightweight, fast-loading, and ready to customize  
+🔹 Preview
 
----
+🔹 Features
 
-## 🔹 Preview
-![Preview of the map](preview.png)
+🗺️ Interactive Heatmap of PM2.5 levels across Kumasi.
 
----
+⏳ Time Slider to explore day-by-day changes.
 
-## 🔹 Tech Stack
-- **Leaflet.js** → map rendering  
-- **GeoJSON** → spatial data format  
-- **OpenStreetMap tiles** → base map  
-- **JavaScript / HTML / CSS** → interactivity & UI  
+📍 Station Popups with PM2.5, PM10, and AQI readings.
 
----
+📱 Mobile-friendly, fast, and shareable via GitHub Pages.
 
-## 🔹 How to Use
-1. Clone this repo  
-   ```bash
-   git clone https://github.com/USERNAME/REPO_NAME.git
+💡 CTA for clients: “Need a live dashboard? Let’s talk.”
+
+🔹 Data
+
+Source: Demo data generated for 4 monitoring stations in Kumasi (7-day series).
+
+File: data/air_quality_timeseries.json
+
+Format:
+
+{
+  "station": "KNUST Campus",
+  "lat": 6.673,
+  "lon": -1.571,
+  "values": [
+    { "date": "2025-09-01", "pm25": 45, "pm10": 70, "aqi": 85 },
+    { "date": "2025-09-02", "pm25": 60, "pm10": 90, "aqi": 110 }
+  ]
+}
+
+🔹 Tech Stack
+
+Leaflet for mapping
+
+Leaflet.heat for heatmap visualization
+
+GeoJSON/JSON for time-series data
+
+GitHub Pages for free hosting
+
+🔹 Why It Matters
+
+Air pollution is a pressing urban issue.
+This dashboard demonstrates how simple web tools can:
+
+Help city planners locate pollution hotspots
+
+Support health organizations with awareness tools
+
+Provide citizens with easy-to-understand risk maps
+
+🔹 Next Steps
+
+✅ Add real-time data via OpenAQ
+ or local sensors
+
+✅ Extend to include other pollutants (NO2, CO)
+
+✅ Connect to SMS/alerts for health advisories
+
+✉️ Built by Victor Morton-Bruce
+Open to collaborations in GIS, environment, and digital storytelling.
