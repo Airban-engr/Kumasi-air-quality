@@ -75,54 +75,61 @@
       return '#9c27b0';                      // Very Unhealthy+
     }
 
-    function updateMapForIndex(i) {
-      const day = dates[i];
-      label.textContent = 'Date: ' + day;
+   function updateMapForIndex(i) {
+  const day = dates[i];
+  label.textContent = 'Date: ' + day;
 
-      // Build heat points: [lat, lon, intensity]
-      const heatPoints = [];
-      // Clean old markers
-      markers.forEach(m => map.removeLayer(m));
-      markers = [];
+  // Build heat points: [lat, lon, intensity]
+  const heatPoints = [];
 
-      series.forEach(st => {
-        const val = st.values.find(v => v.date === day);
-        if (!val) return;
-        const intensity = pm25ToIntensity(val.pm25);
-        heatPoints.push([st.lat, st.lon, intensity]);
+  // Clear old context markers (optional)
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
 
-        // Context marker with popup
-        const marker = L.circleMarker([st.lat, st.lon], {
-          radius: 7, color: '#222', weight: 1,
-          fillColor: colorForAQI(val.aqi), fillOpacity: 0.95
-        })
-        .bindPopup(`
-          <div style="font:13px system-ui">
-            <b>${st.station}</b><br>
-            PM2.5: <b>${val.pm25}</b> µg/m³<br>
-            PM10: <b>${val.pm10}</b> µg/m³<br>
-            AQI: <b>${val.aqi}</b>
-          </div>
-        `);
-        markers.push(marker.addTo(map));
-      });
+  series.forEach(st => {
+    const val = st.values.find(v => v.date === day);
+    if (!val) return;
 
-      // Replace heat layer
-      if (heat) map.removeLayer(heat);
-      heat = L.heatLayer(heatPoints, {
-  radius: 48,          // makes the glow wider
-  blur: 28,            // smooths blending
-  maxZoom: 17,
-  minOpacity: 0.4,
-  gradient: {
-    0.0: "#00ff00",    // green for low
-    0.4: "#ffff00",    // yellow for moderate
-    0.7: "#ff8000",    // orange for unhealthy
-    1.0: "#ff0000"     // red for hazardous
-  }
-}).addTo(map);
+    // Stronger normalization so the heat is visible
+    const intensity = Math.max(0.05, Math.min(1, val.pm25 / 120));
+    heatPoints.push([st.lat, st.lon, intensity]);
 
+    // OPTIONAL: keep small markers for context (comment out to hide)
+    const marker = L.circleMarker([st.lat, st.lon], {
+      radius: 5, color: '#222', weight: 1,
+      fillColor: (val.aqi <= 50) ? '#4caf50'
+                : (val.aqi <= 100) ? '#cddc39'
+                : (val.aqi <= 150) ? '#ff9800'
+                : (val.aqi <= 200) ? '#f44336'
+                : '#9c27b0',
+      fillOpacity: 0.9
+    }).bindPopup(`
+      <div style="font:13px system-ui">
+        <b>${st.station}</b><br>
+        PM2.5: <b>${val.pm25}</b> µg/m³<br>
+        PM10: <b>${val.pm10}</b> µg/m³<br>
+        AQI: <b>${val.aqi}</b>
+      </div>
+    `);
+    // Comment out the next line if you want HEATMAP ONLY
+    markers.push(marker.addTo(map));
+  });
+
+  // Replace heat layer with bold settings
+  if (heat) map.removeLayer(heat);
+  heat = L.heatLayer(heatPoints, {
+    radius: 48,   // wider glow
+    blur: 28,     // smoother blend
+    maxZoom: 17,
+    minOpacity: 0.4,
+    gradient: {
+      0.00: '#00ff00',  // green (low)
+      0.40: '#ffff00',  // yellow
+      0.70: '#ff8000',  // orange
+      1.00: '#ff0000'   // red (high)
     }
+  }).addTo(map);
+}
 
     function playToggle() {
       if (timer) {
